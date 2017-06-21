@@ -1,0 +1,225 @@
+#############################################
+#                                           #
+#  Trabalho de Interação Humano-Computador; #
+#  Prof Giuliano Bertoti;                   #
+#  Código desenvolvido por Rafael Marinho   #
+#  e Milton Braga;                          #
+#  Raspagem de dados financeiros;           #
+#                                           #
+#############################################
+
+#**
+#*  Requisição das bibliotecas:
+#*  Telebot e Telegram são necessárias para a construção do Bot
+#*  do Telegram;
+#*  Time é utilizado para a criação de pausas de execução com a
+#*  função sleep, assim como suas subbibliotecas são necessárias
+#*  para a obtenção do momento de retorno;
+#*  As bibliobtecas URLlib são utilizadas na raspagem de dados;
+#*  O JSON é necessário para a leitura das APIs.
+#**
+
+import telebot
+import telegram
+import time
+from time import gmtime, strftime
+import urllib.request as urllib2
+import json
+
+#**
+#*  Função utilizada na busca das APIs e na formatação de seus dados.
+#**
+def get_cotacao():
+
+    #**
+    #*  A variável page é a raspagem da API que retorna dados
+    #*  sobre as moedas federativas;
+    #*  A variável page2 é a raspagem da API que retorna dados
+    #*  sobre bitcoin.
+    #**
+    
+    page = urllib2.urlopen ('https://api.vitortec.com/currency/quotation/v1.2/')
+    page2= urllib2.urlopen ('https://www.mercadobitcoin.net/api/ticker/')
+
+    #**
+    #*  As variaveis data e data2 pega os dados raspados e os
+    #*  convertem para o formato JSON.
+    #**
+    
+    data = json.load (page)
+    data2= json.load(page2)
+
+    #**
+    #*  Obtenção dos valores sobre o momento em que os dados são obtidos,
+    #*  afim de facilitar a busca do usuário em dados datados.
+    #*  day, mounth e year são referente à data;
+    #*  seconds, minutes e hour são referente ao horário.
+    #**
+    
+    day = (strftime("%d", gmtime()))
+    mounth = (strftime("%m", gmtime()))
+    year = (strftime("%Y", gmtime()))
+
+    seconds = (strftime("%S", gmtime()))    
+    minutes = (strftime("%M", gmtime()))
+    hour = str(int(strftime("%H", gmtime())) - 3)
+
+    #**
+    #*  O horário é no fuso de Greenwich, então ele é convertido ao fuso
+    #*  de Brasília ao subtrair 3 de hour. Abaixo há o tratamento para
+    #*  que esse horário não seja um valor negativo:
+    #**
+    
+    if (int(hour) < 0):
+        hour = (int(hour) + 21)
+
+    #**
+    #*  Os dados referente ao momento são concatenados na variável date.
+    #**
+        
+    date = ("%s/%s/%s - %s:%s:%s"%(day, mounth, year,
+                                   hour, minutes, seconds))
+
+    #**
+    #*  Os dados das moedas são armazenados nos arrays de duas posições
+    #*  abaixo, onde a posição 0 é o valor de compra e a posição 1 é a
+    #*  posição de venda da moeda.
+    #*  Respectivamente, temos a declaração de:
+    #*  Dólar americano; dólar canadense; euro; libra esterlina; franco
+    #*  suíço; peso argentino; rublo russo; iêne japonês; yuan chinês e
+    #*  bitcoin.
+    #*  Logo abaixo, então, há o armazenamento dos valores de cada moeda
+    #*  nessa mesma ordem qual foram declaradas, respectivamente seus
+    #*  valores de compra e venda.
+    #**
+    
+    dolar= [];    candl= [];    euro = [];    pound= [];    suiss= []
+    peso = [];    rubl = [];    jpyen= [];    yuan = [];    btcn = []
+    
+    dolar.append(float(data["data"]["currency"][45]["buying" ]))
+    dolar.append(float(data["data"]["currency"][45]["selling"]))
+
+    candl.append(float(data["data"]["currency"][33]["buying" ]))
+    candl.append(float(data["data"]["currency"][33]["selling"]))
+    
+    euro.append(float(data["data"]["currency"][151]["buying" ]))
+    euro.append(float(data["data"]["currency"][151]["selling"]))
+    
+    pound.append(float(data["data"]["currency"][81]["buying" ]))
+    pound.append(float(data["data"]["currency"][81]["selling"]))
+
+    suiss.append(float(data["data"]["currency"][67]["buying" ]))
+    suiss.append(float(data["data"]["currency"][67]["selling"]))
+    
+    peso.append(float(data["data"]["currency"][100]["buying" ]))
+    peso.append(float(data["data"]["currency"][100]["selling"]))
+    
+    rubl.append(float(data["data"]["currency"][126]["buying" ]))
+    rubl.append(float(data["data"]["currency"][126]["selling"]))
+
+    jpyen.append(float(data["data"]["currency"][71]["buying" ]))
+    jpyen.append(float(data["data"]["currency"][71]["selling"]))
+
+    yuan.append(float(data["data"]["currency"][117]["buying" ]))
+    yuan.append(float(data["data"]["currency"][117]["selling"]))
+    
+    btcn.append(float(data2["ticker"]["buy" ]))
+    btcn.append(float(data2["ticker"]["sell"]))
+    
+    #**
+    #*  A variável result é a que será impressa na interface da conversa
+    #*  do usuário. É mostrado, respectivamente, a data; horário; valor
+    #*  das moedas na mesma ordem de declaração e a fonte dos dados
+    #*  entregues, tudo devidamente concatenado e tabulado.
+    #**
+    
+    result = ('''Cotação:  %s
+    
+    Dólar americano:       USD
+        Compra:       R$ %.4f
+        Venda:         R$ %.4f
+
+    Dólar canadense:        CAD
+        Compra:       R$ %.4f
+        Venda:         R$ %.4f
+        
+    Euro:                   EUR
+        Compra:       R$ %.4f
+        Venda:         R$ %.4f
+        
+    Libra esterlina:        GBP
+        Compra:       R$ %.4f
+        Venda:         R$ %.4f
+
+    Franco suíço:           CHF
+        Compra:       R$ %.4f
+        Venda:         R$ %.4f
+        
+    Peso argentino:         ARS
+        Compra:       R$ %.4f
+        Venda:         R$ %.4f
+        
+    Rublo russo:            RUB
+        Compra:       R$ %.4f
+        Venda:         R$ %.4f
+
+    Iene japonês:           JPY
+        Compra:       R$ %.4f
+        Venda:         R$ %.4f
+
+    Yuan chinês:            CNY
+        Compra:       R$ %.4f
+        Venda:         R$ %.4f
+        
+    Bitcoin:                BTC
+        Compra:       R$ %.1f
+        Venda:         R$ %.1f
+
+Fontes:
+    Banco Central do Brasil
+    <https://www.bcb.gov.br/>
+    
+    Mercado Bitcoin
+    <https://www.mercadobitcoin.com.br//> ''' %(date,
+      dolar[0], dolar[1], candl[0], candl[1], euro [0], euro [1], 
+      pound[0], pound[1], suiss[0], suiss[1], peso [0], peso [1],
+      rubl [0], rubl [1], jpyen[0], jpyen[1], yuan [0], yuan [1],
+                                               btcn[0], btcn[1]))
+
+    #**
+    #*  O retorna dessa função é justamente a variável result:
+    #**
+    
+    return (result)
+
+#**
+#*  A função echo é utilizada para enviar os dados para a interface
+#*  do usuário. É entrado com o token do bot; a identificação da
+#*  conversa e a mensagem que será enviada.
+#**
+
+def echo(bot, chat, message):
+    bot.sendMessage(chat_id=chat, text=message)
+
+#**
+#*  Abaixo, há o token do bot, declarada na variável bot.
+#**
+
+bot = telegram.Bot(token='368606847:AAFFVaJwiR1AkaD697bNCC9qD16li3S4qUw')
+
+#**
+#*  Parte executável e perpétua do código onde, enquanto 1 for menor
+#*  que 2 - algo muito mais poético que "while True" -, a função echo
+#*  é chamada para levar os dados da função get_cotação() até a
+#*  interface do usuário.
+#*  É utilizado a variável bot no campo do token, o codigo 307577897
+#*  para a conversa de Rafael e 355734121 para a conversa de Milton
+#*  (tais utilizadas em teste) e, claro, get_cotacao() é a mensagem a
+#*  ser enviada.
+#*  A mensagem é enviada a cada 60 segundos, conforme o uso da função
+#*  sleep da biblioteca time.
+#**
+
+while (1 < 2):
+    echo(bot,'307577897',get_cotacao())
+    time.sleep(60)
